@@ -546,6 +546,108 @@ button:active:not(:disabled) {
   margin-top: 16px;
 }
 
+/* ── Loading Spinner ── */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(14, 12, 9, 0.75);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  z-index: 100;
+}
+[data-theme="light"] .loading-overlay {
+  background: rgba(245, 240, 232, 0.8);
+}
+.loading-overlay .loader {
+  color: var(--accent-red);
+  font-size: 70px;
+  text-indent: -9999em;
+  overflow: hidden;
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+  position: relative;
+  transform: translateZ(0);
+  animation:
+    spinner-load 1.7s infinite ease,
+    spinner-round 1.7s infinite ease;
+}
+.loading-overlay .loader-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-gold);
+}
+
+@keyframes spinner-load {
+  0% {
+    box-shadow: 0 -0.83em 0 -0.4em,
+      0 -0.83em 0 -0.42em,
+      0 -0.83em 0 -0.44em,
+      0 -0.83em 0 -0.46em,
+      0 -0.83em 0 -0.477em;
+  }
+  5%, 95% {
+    box-shadow: 0 -0.83em 0 -0.4em,
+      0 -0.83em 0 -0.42em,
+      0 -0.83em 0 -0.44em,
+      0 -0.83em 0 -0.46em,
+      0 -0.83em 0 -0.477em;
+  }
+  10%, 59% {
+    box-shadow: 0 -0.83em 0 -0.4em,
+      -0.087em -0.825em 0 -0.42em,
+      -0.173em -0.812em 0 -0.44em,
+      -0.256em -0.789em 0 -0.46em,
+      -0.297em -0.775em 0 -0.477em;
+  }
+  20% {
+    box-shadow: 0 -0.83em 0 -0.4em,
+      -0.338em -0.758em 0 -0.42em,
+      -0.555em -0.617em 0 -0.44em,
+      -0.671em -0.488em 0 -0.46em,
+      -0.749em -0.34em 0 -0.477em;
+  }
+  38% {
+    box-shadow: 0 -0.83em 0 -0.4em,
+      -0.377em -0.74em 0 -0.42em,
+      -0.645em -0.522em 0 -0.44em,
+      -0.775em -0.297em 0 -0.46em,
+      -0.82em -0.09em 0 -0.477em;
+  }
+  100% {
+    box-shadow: 0 -0.83em 0 -0.4em,
+      0 -0.83em 0 -0.42em,
+      0 -0.83em 0 -0.44em,
+      0 -0.83em 0 -0.46em,
+      0 -0.83em 0 -0.477em;
+  }
+}
+@keyframes spinner-round {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.credit {
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--text-dimmed);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+.credit a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.credit a:hover {
+  text-decoration: underline;
+}
+
 .btn-back {
   padding: 10px 24px;
   font-size: 13px;

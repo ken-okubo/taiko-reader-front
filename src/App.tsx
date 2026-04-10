@@ -158,9 +158,10 @@ function App() {
 				</div>
 
 				{loading && (
-					<p style={{ color: 'var(--accent-gold)', fontWeight: 600, fontSize: 14 }}>
-						Carregando partitura...
-					</p>
+					<div className="loading-overlay">
+						<div className="loader" />
+						<span className="loader-text">Carregando partitura...</span>
+					</div>
 				)}
 				{error && (
 					<p style={{ color: 'var(--accent-red)', fontSize: 14 }}>{error}</p>
@@ -184,6 +185,8 @@ function App() {
 				>
 					{theme === 'light' ? '\u{1F319}' : '\u{2600}\u{FE0F}'}
 				</button>
+
+				<p className="credit">por <a href="https://github.com/ken-okubo" target="_blank" rel="noopener noreferrer">Ken Okubo</a></p>
 			</div>
 		);
 	}
@@ -438,7 +441,10 @@ function App() {
 			</div>
 
 			{!allMapped && (
-				<p className="loading-msg">Carregando samples...</p>
+				<div className="loading-overlay">
+					<div className="loader" />
+					<span className="loader-text">Carregando samples...</span>
+				</div>
 			)}
 
 			{/* ── Back ── */}
@@ -449,6 +455,7 @@ function App() {
 				>
 					&#8592; Escolher outra partitura
 				</button>
+				<p className="credit">por <a href="https://github.com/ken-okubo" target="_blank" rel="noopener noreferrer">Ken Okubo</a></p>
 			</div>
 		</div>
 	);
