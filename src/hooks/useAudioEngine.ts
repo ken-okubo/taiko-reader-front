@@ -3,6 +3,12 @@ import type { ScorePayload, SampleMapping } from '../types/score'
 
 const METRONOME_SAMPLE = 'Timer Count.wav'
 
+// Base volume multipliers per instrument — invisible to the UI
+const BASE_GAIN: Record<string, number> = {
+  shime: 1.8,
+  nagado: 1.8,
+}
+
 export function useAudioEngine(score: ScorePayload | null, sampleMapping: SampleMapping) {
   const contextRef = useRef<AudioContext | null>(null)
   const buffersRef = useRef<Record<string, AudioBuffer>>({})
@@ -34,21 +40,9 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
     loopRef.current = { start: loopStart, end: loopEnd, enabled: loopEnabled }
   }, [loopStart, loopEnd, loopEnabled])
 
-  // Init loopEnd + default volumes when score loads
+  // Init loopEnd when score loads
   useEffect(() => {
-    if (!score) return
-    setLoopEnd(score.totalDurationTime)
-    // Shime and Nagado default 80% louder
-    setTrackVolumes(prev => {
-      const next = { ...prev }
-      for (const track of score.tracks) {
-        if (next[track.id] !== undefined) continue // don't override user-set volumes
-        if (track.sample === 'shime' || track.sample === 'nagado') {
-          next[track.id] = 1.8
-        }
-      }
-      return next
-    })
+    if (score) setLoopEnd(score.totalDurationTime)
   }, [score])
 
   // Load samples + metronome, create gain nodes
@@ -110,7 +104,8 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
       if (!gain) continue
       const isMuted = soloTrack ? track.id !== soloTrack : mutedTracks.has(track.id)
       const vol = trackVolumes[track.id] ?? 1
-      gain.gain.value = isMuted ? 0 : vol
+      const base = BASE_GAIN[track.sample] ?? 1
+      gain.gain.value = isMuted ? 0 : vol * base
     }
   }, [score, mutedTracks, soloTrack, trackVolumes, ready])
 
@@ -291,10 +286,19 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
     setLoopEnabled(prev => !prev)
   }, [])
 
+  // Changing speed while playing causes desync — auto-pause
+  const setSpeedSafe = useCallback((newSpeed: number) => {
+    if (isPlaying) {
+      clearScheduled()
+      setIsPlaying(false)
+    }
+    setSpeed(newSpeed)
+  }, [isPlaying, clearScheduled])
+
   return {
     isPlaying, ready, currentTime, speed, metronomeOn, trackVolumes,
     loopStart, loopEnd, loopEnabled,
-    play, pause, stop, seek, setSpeed, toggleMetronome, toggleLoop,
+    play, pause, stop, seek, setSpeed: setSpeedSafe, toggleMetronome, toggleLoop,
     setLoopStart, setLoopEnd,
     mutedTracks, soloTrack, toggleMute, toggleSolo, setTrackVolume,
   }
