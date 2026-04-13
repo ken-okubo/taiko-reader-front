@@ -14,6 +14,8 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
   const buffersRef = useRef<Record<string, AudioBuffer>>({})
   const trackGainsRef = useRef<Record<string, GainNode>>({})
   const metronomeGainRef = useRef<GainNode | null>(null)
+  const masterGainRef = useRef<GainNode | null>(null)
+  const compressorRef = useRef<DynamicsCompressorNode | null>(null)
   const scheduledRef = useRef<AudioBufferSourceNode[]>([])
   const startTimeRef = useRef(0)
   const startOffsetRef = useRef(0)
@@ -58,16 +60,32 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
     const ctx = new AudioContext()
     contextRef.current = ctx
 
+    // Master pipeline: masterGain → compressor → destination
+    const masterGain = ctx.createGain()
+    masterGain.gain.value = 0.6
+    masterGainRef.current = masterGain
+
+    const compressor = ctx.createDynamicsCompressor()
+    compressor.threshold.value = -18
+    compressor.ratio.value = 4
+    compressor.attack.value = 0.01
+    compressor.release.value = 0.2
+    compressor.knee.value = 6
+    compressorRef.current = compressor
+
+    masterGain.connect(compressor)
+    compressor.connect(ctx.destination)
+
     const gains: Record<string, GainNode> = {}
     for (const track of score.tracks) {
       const gain = ctx.createGain()
-      gain.connect(ctx.destination)
+      gain.connect(masterGain)
       gains[track.id] = gain
     }
     trackGainsRef.current = gains
 
     const metGain = ctx.createGain()
-    metGain.connect(ctx.destination)
+    metGain.connect(masterGain)
     metronomeGainRef.current = metGain
 
     async function loadSamples() {
