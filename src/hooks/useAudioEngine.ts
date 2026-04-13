@@ -60,20 +60,20 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
     const ctx = new AudioContext()
     contextRef.current = ctx
 
-    // Master pipeline: masterGain → compressor → limiter → destination
+    // Master pipeline: masterGain → compressor → limiter → softClipper → destination
     const masterGain = ctx.createGain()
-    masterGain.gain.value = 0.4
+    masterGain.gain.value = 0.3
     masterGainRef.current = masterGain
 
     const compressor = ctx.createDynamicsCompressor()
-    compressor.threshold.value = -24
+    compressor.threshold.value = -28
     compressor.ratio.value = 6
-    compressor.attack.value = 0.005
+    compressor.attack.value = 0.001
     compressor.release.value = 0.15
     compressor.knee.value = 6
     compressorRef.current = compressor
 
-    // Limiter: brickwall safety net — prevents any clipping
+    // Limiter: brickwall safety net
     const limiter = ctx.createDynamicsCompressor()
     limiter.threshold.value = -3
     limiter.ratio.value = 20
@@ -81,9 +81,21 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
     limiter.release.value = 0.01
     limiter.knee.value = 0
 
+    // Soft clipper: tanh waveshaper — catches anything the limiter misses
+    const softClipper = ctx.createWaveShaper()
+    const CURVE_SAMPLES = 8192
+    const curve = new Float32Array(CURVE_SAMPLES)
+    for (let i = 0; i < CURVE_SAMPLES; i++) {
+      const x = (i * 2) / CURVE_SAMPLES - 1
+      curve[i] = Math.tanh(x)
+    }
+    softClipper.curve = curve
+    softClipper.oversample = '2x'
+
     masterGain.connect(compressor)
     compressor.connect(limiter)
-    limiter.connect(ctx.destination)
+    limiter.connect(softClipper)
+    softClipper.connect(ctx.destination)
 
     const gains: Record<string, GainNode> = {}
     for (const track of score.tracks) {
@@ -214,11 +226,15 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
         source.buffer = buffer
 
         const eventGain = ctx.createGain()
-        eventGain.gain.value = event.velocity / 127
+        const noteTime = now + (event.startTime - fromTime) / spd
+        const vel = event.velocity / 127
+        // 2ms fade-in: kills the initial transient that the compressor can't catch
+        eventGain.gain.setValueAtTime(0, noteTime)
+        eventGain.gain.linearRampToValueAtTime(vel, noteTime + 0.002)
         source.connect(eventGain)
         eventGain.connect(trackGain)
 
-        source.start(now + (event.startTime - fromTime) / spd)
+        source.start(noteTime)
         sources.push(source)
       }
     }
