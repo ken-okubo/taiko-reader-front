@@ -60,21 +60,30 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
     const ctx = new AudioContext()
     contextRef.current = ctx
 
-    // Master pipeline: masterGain → compressor → destination
+    // Master pipeline: masterGain → compressor → limiter → destination
     const masterGain = ctx.createGain()
-    masterGain.gain.value = 0.6
+    masterGain.gain.value = 0.4
     masterGainRef.current = masterGain
 
     const compressor = ctx.createDynamicsCompressor()
-    compressor.threshold.value = -18
-    compressor.ratio.value = 4
-    compressor.attack.value = 0.01
-    compressor.release.value = 0.2
+    compressor.threshold.value = -24
+    compressor.ratio.value = 6
+    compressor.attack.value = 0.005
+    compressor.release.value = 0.15
     compressor.knee.value = 6
     compressorRef.current = compressor
 
+    // Limiter: brickwall safety net — prevents any clipping
+    const limiter = ctx.createDynamicsCompressor()
+    limiter.threshold.value = -3
+    limiter.ratio.value = 20
+    limiter.attack.value = 0.001
+    limiter.release.value = 0.01
+    limiter.knee.value = 0
+
     masterGain.connect(compressor)
-    compressor.connect(ctx.destination)
+    compressor.connect(limiter)
+    limiter.connect(ctx.destination)
 
     const gains: Record<string, GainNode> = {}
     for (const track of score.tracks) {

@@ -440,7 +440,7 @@ function App() {
 				)}
 			</div>
 
-			{!allMapped && (
+			{!canPlay && (
 				<div className="loading-overlay">
 					<div className="loader" />
 					<span className="loader-text">Carregando samples...</span>
