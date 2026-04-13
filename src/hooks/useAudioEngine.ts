@@ -163,15 +163,39 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
     setCurrentTime(0)
   }, [clearScheduled])
 
-  const scheduleFrom = useCallback((fromTime: number, untilTime: number) => {
+  const scheduleFrom = useCallback((fromTime: number, untilTime: number, countIn = false) => {
     if (!score || !contextRef.current) return
 
     const ctx = contextRef.current
     const spd = speedRef.current
-    const now = ctx.currentTime + 0.05
+    const secPerBeat = 60 / score.tempo
+    const COUNT_IN_BEATS = 4
+
+    // When count-in is active, schedule 4 beats of metronome before the music starts
+    const countInDuration = countIn ? (COUNT_IN_BEATS * secPerBeat) / spd : 0
+    const now = ctx.currentTime + 0.05 + countInDuration
     startTimeRef.current = now
     startOffsetRef.current = fromTime
     const sources: AudioBufferSourceNode[] = []
+
+    // Schedule count-in clicks (always audible, ignores metronome switch)
+    if (countIn) {
+      const metBuffer = buffersRef.current[METRONOME_SAMPLE]
+      const masterGain = masterGainRef.current
+      if (metBuffer && masterGain) {
+        const countInStart = now - countInDuration
+        for (let i = 0; i < COUNT_IN_BEATS; i++) {
+          const source = ctx.createBufferSource()
+          source.buffer = metBuffer
+          const clickGain = ctx.createGain()
+          clickGain.gain.value = i === 0 ? 1 : 0.5
+          source.connect(clickGain)
+          clickGain.connect(masterGain)
+          source.start(countInStart + (i * secPerBeat) / spd)
+          sources.push(source)
+        }
+      }
+    }
 
     // Schedule track events in range
     for (const track of score.tracks) {
@@ -204,7 +228,6 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
     const metGain = metronomeGainRef.current
     if (metBuffer && metGain) {
       const ts = score.timeSignatures[0] || { beats: 4, beatType: 4 }
-      const secPerBeat = 60 / score.tempo
       const firstBeat = Math.floor(fromTime / secPerBeat)
       const lastBeat = Math.ceil(untilTime / secPerBeat)
 
@@ -229,7 +252,7 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
     scheduledRef.current = sources
   }, [score, sampleMapping])
 
-  const playFrom = useCallback(async (fromTime?: number) => {
+  const playFrom = useCallback(async (fromTime?: number, countIn = false) => {
     if (!score || !ready || !contextRef.current) return
 
     const ctx = contextRef.current
@@ -241,7 +264,7 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
     const start = fromTime ?? (loop.enabled ? loop.start : 0)
     const end = loop.enabled ? loop.end : score.totalDurationTime
 
-    scheduleFrom(start, end)
+    scheduleFrom(start, end, countIn)
     setIsPlaying(true)
 
     function tick() {
@@ -277,7 +300,7 @@ export function useAudioEngine(score: ScorePayload | null, sampleMapping: Sample
     if (currentTime > 0) {
       playFrom(currentTime)
     } else {
-      playFrom()
+      playFrom(undefined, true) // count-in on fresh start
     }
   }, [playFrom, currentTime])
 
